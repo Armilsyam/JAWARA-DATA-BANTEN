@@ -1,135 +1,183 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+from datetime import datetime, timedelta
+from sklearn.linear_model import LinearRegression
 
 # --- 1. KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="JAWARA DATA v3", page_icon="🚀", layout="wide")
+st.set_page_config(page_title="JAWARA DATA Ultimate", page_icon="🏆", layout="wide")
 
-# --- 2. GENERASI DATA DUMMY (Realistis) ---
-@st.cache_data
-def generate_energy_data():
-    np.random.seed(42)
-    dates = pd.date_range(start="2026-01-01", periods=180, freq="D")
-    base_kwh = np.linspace(250, 150, 180) + np.random.normal(0, 15, 180)
-    carbon_footprint = base_kwh * 0.85 # Asumsi 1 kWh = 0.85 Kg CO2
-    
-    df = pd.DataFrame({
+# --- 2. INISIALISASI DATABASE SEMENTARA (SESSION STATE) ---
+# Ini memungkinkan input manual tersimpan selama aplikasi berjalan
+if 'energy_data' not in st.session_state:
+    # Data awal (Baseline)
+    dates = pd.date_range(start="2026-06-01", periods=30, freq="D")
+    base_kwh = np.linspace(200, 150, 30) + np.random.normal(0, 10, 30)
+    st.session_state['energy_data'] = pd.DataFrame({
         'Tanggal': dates,
         'Pemakaian Listrik (kWh)': np.round(base_kwh, 2),
-        'Jejak Karbon (Kg CO2)': np.round(carbon_footprint, 2)
-    })
-    return df
-
-@st.cache_data
-def generate_student_data():
-    return pd.DataFrame({
-        'ID Siswi': ['SRI-001', 'SRI-002', 'SRI-003', 'SRI-004', 'SRI-005', 'SRI-006', 'SRI-007', 'SRI-008'],
-        'Nama': ['Siti', 'Ayu', 'Rina', 'Desi', 'Wati', 'Nia', 'Fitri', 'Lestari'],
-        'Kelas': ['X-TKJ', 'X-RPL', 'XI-TKJ', 'XI-RPL', 'X-RPL', 'XI-TKJ', 'X-TKJ', 'XI-RPL'],
-        'Literasi Data Awal': [45, 50, 40, 55, 48, 42, 52, 49],
-        'Literasi Data Akhir': [88, 92, 85, 95, 89, 87, 94, 91],
-        'Proyek Selesai': [3, 4, 3, 5, 4, 3, 5, 4],
-        'Status Ekonomi': ['Pra-Sejahtera', 'Menengah', 'Pra-Sejahtera', 'Menengah', 'Pra-Sejahtera', 'Pra-Sejahtera', 'Menengah', 'Pra-Sejahtera']
+        'Jejak Karbon (Kg CO2)': np.round(base_kwh * 0.85, 2)
     })
 
-df_energy = generate_energy_data()
-df_students = generate_student_data()
+if 'student_data' not in st.session_state:
+    st.session_state['student_data'] = pd.DataFrame({
+        'ID Siswi': ['SRI-001', 'SRI-002', 'SRI-003'],
+        'Nama': ['Siti (Contoh)', 'Ayu (Contoh)', 'Rina (Contoh)'],
+        'Status Ekonomi': ['Pra-Sejahtera', 'Menengah', 'Pra-Sejahtera'],
+        'Literasi Awal': [45, 50, 40],
+        'Literasi Akhir': [88, 92, 85],
+        'Kehadiran (%)': [95, 100, 90]
+    })
 
-# --- 3. SIDEBAR NAVIGASI ---
-st.sidebar.title("🚀 Navigasi Sistem")
-st.sidebar.markdown("Pilih Modul Analitik:")
-menu = st.sidebar.radio("", [
-    "📊 Pantau Energi (Go Green)", 
-    "👩‍💻 Profil Srikandi Data (GESI)", 
-    "🤖 Prediksi AI Jejak Karbon"
+# --- 3. SIDEBAR & NAVIGASI ---
+st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2103/2103254.png", width=80)
+st.sidebar.title("Navigasi JAWARA DATA")
+menu = st.sidebar.radio("Pilih Modul Sistem:", [
+    "🏠 Beranda Eksekutif", 
+    "✍️ Input Data Manual", 
+    "🌍 Pantau Energi (Go Green)", 
+    "👩‍💻 Analisis Srikandi (GESI)", 
+    "🤖 AI Automation (Auto-Predict)"
 ])
-
 st.sidebar.markdown("---")
-st.sidebar.caption("Sistem didukung oleh infrastruktur PT. Boyang Digital Nusantara - Banten")
+st.sidebar.caption("© 2026 - Dikembangkan untuk Kompetisi Inovasi Pendidikan Banten")
 
-# --- 4. LOGIKA ROUTING HALAMAN ---
+# --- 4. LOGIKA MODUL HALAMAN ---
 
-if menu == "📊 Pantau Energi (Go Green)":
-    st.title("🌱 Dasbor Analitik Efisiensi Energi Sekolah")
-    st.markdown("Pemantauan *real-time* penggunaan daya listrik dan kalkulasi jejak karbon operasional harian.")
+if menu == "🏠 Beranda Eksekutif":
+    st.title("🏆 JAWARA DATA (Versi Ultimate)")
+    st.markdown("Sistem Pemantauan Jejak Karbon & Inklusi Sosial Terintegrasi AI Automations.")
     
-    # Metrik Utama
-    col1, col2, col3, col4 = st.columns(4)
-    total_kwh = df_energy['Pemakaian Listrik (kWh)'].sum()
-    total_co2 = df_energy['Jejak Karbon (Kg CO2)'].sum()
-    rata_harian = df_energy['Pemakaian Listrik (kWh)'].mean()
+    col1, col2, col3 = st.columns(3)
+    df_e = st.session_state['energy_data']
+    df_s = st.session_state['student_data']
     
-    col1.metric("Total Pemakaian (6 Bulan)", f"{total_kwh:,.0f} kWh")
-    col2.metric("Total Jejak Karbon", f"{total_co2:,.0f} Kg")
-    col3.metric("Rata-rata Harian", f"{rata_harian:.1f} kWh", "-12.5% dari target")
-    col4.metric("Status Zonasi", "Aman", "Rekomendasi aktif")
+    col1.metric("Total Pemakaian Energi Tercatat", f"{df_e['Pemakaian Listrik (kWh)'].sum():,.0f} kWh")
+    col2.metric("Total Jejak Karbon", f"{df_e['Jejak Karbon (Kg CO2)'].sum():,.0f} Kg CO2")
+    col3.metric("Total Siswi Terbina (GESI)", f"{len(df_s)} Orang")
+    
+    st.info("👈 Gunakan navigasi di sebelah kiri untuk menginput data baru secara manual atau menjalankan eksekusi AI.")
 
-    st.markdown("---")
+elif menu == "✍️ Input Data Manual":
+    st.title("✍️ Modul Input Data Manual")
+    st.markdown("Masukkan data operasional sekolah harian atau data siswi baru di sini. Data akan langsung terhubung dengan mesin AI.")
     
-    # Grafik Utama
-    st.subheader("Tren Pemakaian Listrik Harian (Januari - Juni 2026)")
-    st.line_chart(df_energy.set_index('Tanggal')['Pemakaian Listrik (kWh)'], color="#17B169")
+    tab1, tab2 = st.tabs(["⚡ Input Listrik Harian", "👩‍🎓 Registrasi Siswi Baru"])
     
-    # Tabel Data
-    st.subheader("Log Data Harian")
-    st.dataframe(df_energy.sort_values(by="Tanggal", ascending=False).head(10), use_container_width=True)
-    
-    # Fitur Download Laporan
-    csv_energy = df_energy.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Unduh Laporan Energi (CSV)",
-        data=csv_energy,
-        file_name='laporan_energi_sekolah.csv',
-        mime='text/csv',
-    )
+    with tab1:
+        with st.form("form_energi", clear_on_submit=True):
+            st.subheader("Catat Penggunaan Daya Hari Ini")
+            tgl_input = st.date_input("Tanggal Pencatatan")
+            kwh_input = st.number_input("Pemakaian Listrik (kWh)", min_value=0.0, value=150.0, step=1.5)
+            submit_energi = st.form_submit_button("Simpan Data Energi")
+            
+            if submit_energi:
+                co2_calc = round(kwh_input * 0.85, 2)
+                new_e_data = pd.DataFrame({
+                    'Tanggal': [pd.to_datetime(tgl_input)],
+                    'Pemakaian Listrik (kWh)': [kwh_input],
+                    'Jejak Karbon (Kg CO2)': [co2_calc]
+                })
+                st.session_state['energy_data'] = pd.concat([st.session_state['energy_data'], new_e_data], ignore_index=True)
+                st.success(f"Data tanggal {tgl_input} berhasil disimpan! Jejak Karbon: {co2_calc} Kg CO2.")
 
-elif menu == "👩‍💻 Profil Srikandi Data (GESI)":
-    st.title("👩‍💻 Analitik Kompetensi Siswi (Fokus GESI)")
-    st.markdown("Rekam jejak peningkatan literasi *Data Science* pada siswi perempuan kelompok rentan di Pandeglang.")
+    with tab2:
+        with st.form("form_siswi", clear_on_submit=True):
+            st.subheader("Registrasi Srikandi Data Baru")
+            nama_input = st.text_input("Nama Siswi")
+            ekonomi_input = st.selectbox("Status Ekonomi Keluarga", ["Pra-Sejahtera", "Menengah", "Mampu"])
+            lit_awal = st.slider("Nilai Pre-Test (Literasi Awal)", 0, 100, 50)
+            lit_akhir = st.slider("Nilai Post-Test (Literasi Akhir)", 0, 100, 85)
+            hadir = st.slider("Persentase Kehadiran (%)", 0, 100, 95)
+            submit_siswi = st.form_submit_button("Simpan Profil Siswi")
+            
+            if submit_siswi:
+                new_id = f"SRI-{len(st.session_state['student_data']) + 1:03d}"
+                new_s_data = pd.DataFrame({
+                    'ID Siswi': [new_id], 'Nama': [nama_input], 'Status Ekonomi': [ekonomi_input],
+                    'Literasi Awal': [lit_awal], 'Literasi Akhir': [lit_akhir], 'Kehadiran (%)': [hadir]
+                })
+                st.session_state['student_data'] = pd.concat([st.session_state['student_data'], new_s_data], ignore_index=True)
+                st.success(f"Siswi {nama_input} berhasil diregistrasi dengan ID {new_id}!")
+
+elif menu == "🌍 Pantau Energi (Go Green)":
+    st.title("🌍 Dasbor Go Green & Jejak Karbon")
+    df_e = st.session_state['energy_data'].sort_values('Tanggal')
+    
+    st.line_chart(df_e.set_index('Tanggal')['Pemakaian Listrik (kWh)'], color="#17B169")
+    st.dataframe(df_e, use_container_width=True)
+    
+    csv_e = df_e.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Unduh Laporan Lingkungan (CSV)", csv_e, "laporan_gogreen.csv", "text/csv")
+
+elif menu == "👩‍💻 Analisis Srikandi (GESI)":
+    st.title("👩‍💻 Analisis Kesetaraan Gender & Inklusi Sosial")
+    df_s = st.session_state['student_data']
     
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("Sebaran Peningkatan Kemampuan")
-        df_students['Peningkatan (%)'] = ((df_students['Literasi Data Akhir'] - df_students['Literasi Data Awal']) / df_students['Literasi Data Awal']) * 100
-        st.dataframe(df_students[['Nama', 'Kelas', 'Literasi Data Awal', 'Literasi Data Akhir', 'Peningkatan (%)']], use_container_width=True)
-    
+        st.subheader("Data Peserta Didik Perempuan")
+        st.dataframe(df_s, use_container_width=True)
     with col2:
-        st.subheader("Komparasi Literasi (Pre vs Post)")
-        chart_data = df_students[['Nama', 'Literasi Data Awal', 'Literasi Data Akhir']].set_index('Nama')
-        st.bar_chart(chart_data)
-
-    st.markdown("---")
-    st.subheader("Korelasi Proyek Diselesaikan vs Status Ekonomi")
-    st.markdown("Sistem memprioritaskan siswi dari keluarga pra-sejahtera untuk memimpin proyek industri nyata.")
-    
-    # Tampilan kartu profil terbaik
-    top_student = df_students.sort_values(by="Literasi Data Akhir", ascending=False).iloc[0]
-    st.info(f"🏆 **Performa Tertinggi Bulan Ini:** {top_student['Nama']} ({top_student['Kelas']}) - Menyelesaikan {top_student['Proyek Selesai']} Proyek Analitik. Status: {top_student['Status Ekonomi']}.")
-
-elif menu == "🤖 Prediksi AI Jejak Karbon":
-    st.title("🤖 Simulasi Prediksi (*Machine Learning*)")
-    st.markdown("Gunakan model *forecasting* ini untuk melihat potensi penghematan anggaran dan penurunan karbon jika kebijakan *Go Green* diterapkan lebih agresif.")
-    
-    col1, col2 = st.columns([1, 2])
-    
-    with col1:
-        st.subheader("Parameter Kebijakan")
-        jam_pemangkasan = st.slider("Pemangkasan Jam AC/Hari (Jam)", 0, 5, 2)
-        lampu_led = st.radio("Migrasi 100% Lampu LED?", ["Ya", "Belum"])
+        st.subheader("Distribusi Status Ekonomi (Inklusi)")
+        st.bar_chart(df_s['Status Ekonomi'].value_counts())
         
-        # Logika Prediksi Sederhana
-        penghematan_base = jam_pemangkasan * 15.5
-        if lampu_led == "Ya":
-            penghematan_base += 20.0
+    csv_s = df_s.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Unduh Laporan GESI (CSV)", csv_s, "laporan_gesi.csv", "text/csv")
+
+elif menu == "🤖 AI Automation (Auto-Predict)":
+    st.title("🤖 Eksekusi AI Automations")
+    st.markdown("Mesin *Machine Learning* (Regresi Linear) akan membaca data historis yang telah Anda input dan mengeksekusi prediksi secara otomatis.")
+    
+    tab_ai1, tab_ai2 = st.tabs(["⚡ Auto-Predict Tagihan Listrik", "🎓 Auto-Predict Potensi Siswi"])
+    
+    with tab_ai1:
+        st.subheader("AI Prediksi Pemakaian Energi 7 Hari Kedepan")
+        df_e = st.session_state['energy_data'].copy()
+        
+        if len(df_e) > 5:
+            # AI ML Training on the fly
+            df_e['Hari_Ke'] = np.arange(len(df_e))
+            X = df_e[['Hari_Ke']]
+            y = df_e['Pemakaian Listrik (kWh)']
             
-    with col2:
-        st.subheader("Hasil Prediksi 30 Hari Kedepan")
-        prediksi_kwh = (150 * 30) - (penghematan_base * 30)
-        prediksi_co2 = prediksi_kwh * 0.85
-        estimasi_rupiah = prediksi_kwh * 1444 # Tarif dasar listrik asumsi
+            model = LinearRegression()
+            model.fit(X, y)
+            
+            # Memprediksi 7 hari ke depan
+            future_days = np.arange(len(df_e), len(df_e) + 7).reshape(-1, 1)
+            predictions = model.predict(future_days)
+            
+            last_date = df_e['Tanggal'].max()
+            future_dates = [last_date + timedelta(days=int(i)) for i in range(1, 8)]
+            
+            df_pred = pd.DataFrame({'Tanggal': future_dates, 'Prediksi kWh': np.round(predictions, 2)})
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.dataframe(df_pred, use_container_width=True)
+            with col2:
+                st.line_chart(df_pred.set_index('Tanggal')['Prediksi kWh'], color="#FF0000")
+                st.warning("⚠️ Berdasarkan algoritma, jika tren naik, segera lakukan efisiensi AC!")
+        else:
+            st.error("Data energi belum cukup. Silakan input minimal 5 hari data di menu 'Input Data Manual'.")
+            
+    with tab_ai2:
+        st.subheader("AI Prediksi Kemampuan Siswi Baru")
+        st.markdown("Masukkan nilai tes awal (Pre-Test) siswi baru, AI akan memprediksi hasil kelulusan akhirnya berdasarkan pola belajar Srikandi sebelumnya.")
         
-        st.success(f"⚡ **Proyeksi Pemakaian:** {prediksi_kwh:,.0f} kWh / bulan")
-        st.success(f"🌍 **Proyeksi Jejak Karbon:** {prediksi_co2:,.0f} Kg CO2 / bulan")
-        st.success(f"💰 **Estimasi Tagihan:** Rp {estimasi_rupiah:,.0f}")
+        sim_pre_test = st.number_input("Input Nilai Pre-Test (AI Simulation)", min_value=0, max_value=100, value=50)
         
-        st.markdown(f"**Insight AI:** Dengan kebijakan pemangkasan AC selama {jam_pemangkasan} jam dan status migrasi LED '{lampu_led}', sekolah diprediksi akan menghemat anggaran hingga **Rp {(penghematan_base * 30 * 1444):,.0f}** bulan depan.")
+        if st.button("Jalankan AI Analitik Siswi"):
+            df_s = st.session_state['student_data']
+            if len(df_s) > 2:
+                # ML Training
+                X_s = df_s[['Literasi Awal']]
+                y_s = df_s['Literasi Akhir']
+                model_s = LinearRegression()
+                model_s.fit(X_s, y_s)
+                
+                pred_akhir = model_s.predict([[sim_pre_test]])[0]
+                st.success(f"🎯 **Hasil Eksekusi AI:** Jika siswi ini mendapatkan pelatihan intensif, nilai post-test diprediksi akan mencapai **{pred_akhir:.1f}**.")
+            else:
+                st.error("Butuh lebih banyak data siswi untuk menjalankan AI.")
