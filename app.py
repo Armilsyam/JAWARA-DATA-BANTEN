@@ -20,6 +20,10 @@ if 'energy_data' not in st.session_state:
         'Jejak Karbon (Kg CO2)': np.round(base_kwh * 0.85, 2),
         'Sampah Daur Ulang (Kg)': base_sampah
     })
+else:
+    # PERBAIKAN ERROR: Jika data memori versi lama masih ada, tambahkan kolom Adiwiyata yang hilang
+    if 'Sampah Daur Ulang (Kg)' not in st.session_state['energy_data'].columns:
+        st.session_state['energy_data']['Sampah Daur Ulang (Kg)'] = np.random.randint(2, 12, len(st.session_state['energy_data']))
 
 if 'student_data' not in st.session_state:
     st.session_state['student_data'] = pd.DataFrame({
@@ -32,7 +36,11 @@ if 'student_data' not in st.session_state:
         'Kehadiran (%)': [95, 100, 90, 98],
         'Peluang Karir': ['Front-End Developer', 'Social Media Specialist', 'Data Analyst', 'Video Editor / Kreator']
     })
-
+else:
+    # PERBAIKAN ERROR: Tambahkan kolom karir ke data siswi versi lama
+    if 'Minat Utama' not in st.session_state['student_data'].columns:
+        st.session_state['student_data']['Minat Utama'] = 'Data Science'
+        st.session_state['student_data']['Peluang Karir'] = 'Data Analyst'
 # --- 3. SIDEBAR & NAVIGASI ---
 st.sidebar.image("https://cdn-icons-png.flaticon.com/512/2103/2103254.png", width=80)
 st.sidebar.title("Navigasi JAWARA DATA")
